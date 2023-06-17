@@ -1,0 +1,32 @@
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Search Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90% ...">
+    <div class="container mx-auto px-4 py-12">
+      <div class="max-w-3xl mx-auto">
+        <h1 class="text-6xl font-bold text-center drop-shadow-md text-blue-800 py-2"><strong>CodeSEEK</strong></h1>
+        <form method="POST" class="mb-4 flex items-center justify-center py-4">
+          {{ form.hidden_tag() }}
+          <div class="mr-2">
+            <label for="{{ form.search.id }}">{{ form.search.label }}</label>
+          </div>
+          {{ form.search(class="border border-gray-300 rounded px-4 py-2") }}
+          <button type="submit" class="bg-blue-800 text-white rounded px-4 py-2 ml-2">Search</button>
+        </form>
+        <div>
+          {% for result in results %}
+          <div class="bg-gray-200 rounded-lg shadow-lg p-6 mb-4">
+            <p class="text-lg font-semibold">{{ result['Question Link'].split('/')[-1].replace('-', ' ').capitalize() }}</p>
+            <a target="_blank" href="{{ result['Question Link'] }}" class="text-blue-500 mt-2 block">{{ result['Question Link'] }}</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
