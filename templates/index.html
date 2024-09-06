@@ -184,35 +184,97 @@
 
         if (!searchTerm) return;
 
+        // Split the search term into tags (keywords) and remove spaces
+        tags = searchTerm.split(" ").filter(tag => tag.trim() !== "");
+
+        // Update the tags display based on the search input
+        updateTagDisplay();
+
+        performSearch(); // Perform search after updating tags
+      });
+
+      // Function to display the tags dynamically based on done questions and search input
+      function updateTagDisplay() {
+        const tagContainer = document.getElementById("tag-container");
+        tagContainer.innerHTML = ""; // Clear previous tags
+
+        tags.forEach((tag, index) => {
+          const tagElement = document.createElement("span");
+          tagElement.className =
+            "bg-gray-500 text-white font-semibold px-4 py-2 mr-2 mb-2 inline-flex items-center rounded-md shadow-md hover:bg-gray-600 transition-all duration-200 ease-in-out";
+          tagElement.innerHTML = `
+            ${tag}
+            <button class="ml-2 text-white hover:text-red-600 focus:outline-none" onclick="removeTag(${index})">&times;</button>
+          `;
+          tagContainer.appendChild(tagElement);
+        });
+      }
+
+      // Remove a tag and perform the search again
+      function removeTag(index) {
+        tags.splice(index, 1); // Remove from the array
+        const searchInput = document.getElementById("search-input");
+        searchInput.value = tags.join(" ");
+        updateTagDisplay(); // Update tags visually
+        performSearch(); // Trigger the search again based on the remaining tags
+      }
+
+      // Perform a search based on the current tags array
+      function performSearch() {
+        const searchTerm = tags.join(" ").trim(); // Rejoin the remaining tags into a search term
+
+        let searchResults = document.getElementById("search-results");
+        searchResults.innerHTML = ""; // Clear previous results
+
+        if (searchTerm === "") {
+          return;
+        }
+
         fetch(`/search/${searchTerm}`)
           .then((response) => response.json())
           .then((data) => {
-            let searchResults = document.getElementById("search-results");
-            searchResults.innerHTML = ""; // Clear previous results
+            if (data.length === 0) {
+              const noResultsElement = document.createElement("div");
+              noResultsElement.className =
+                "bg-gray-200 rounded-lg shadow-lg p-6 mb-4";
+              noResultsElement.innerHTML = `<p class="text-lg font-semibold">No results found</p>`;
+              searchResults.appendChild(noResultsElement);
+            } else {
+              data.forEach((result) => {
+                const questionId = result["Question Link"].split("/").pop();
+                const isDone = doneQuestions.includes(questionId); // Check Firestore for done status
 
-            data.forEach((result) => {
-              const questionId = result["Question Link"].split("/").pop();
-              const isDone = doneQuestions.includes(questionId);
+                const resultElement = document.createElement("div");
+                resultElement.className = "bg-gray-200 rounded-lg shadow-lg p-6 mb-4";
 
-              const resultElement = document.createElement("div");
-              resultElement.className = "bg-gray-200 rounded-lg shadow-lg p-6 mb-4";
+                const questionElement = document.createElement("p");
+                questionElement.className = "text-lg font-semibold";
+                questionElement.innerText = questionId.replace("-", " ").toUpperCase();
 
-              resultElement.innerHTML = `
-                <p class="text-lg font-semibold">${questionId.replace("-", " ").toUpperCase()}</p>
-                <a target="_blank" href="${result["Question Link"]}" class="text-blue-500 mt-2 block">${result["Question Link"]}</a>
-                <button class="mark-done-btn ${questionId} bg-${isDone ? "red" : "green"}-600 text-white px-4 py-2 mt-2">
-                  ${isDone ? "Done" : "Not Done"}
-                </button>
-              `;
+                const linkElement = document.createElement("a");
+                linkElement.className = "text-blue-500 mt-2 block";
+                linkElement.href = result["Question Link"];
+                linkElement.innerText = result["Question Link"];
+                linkElement.target = "_blank";
 
-              const buttonElement = resultElement.querySelector(`.${questionId}`);
-              buttonElement.onclick = () => toggleDone(questionId, buttonElement);
+                const buttonElement = document.createElement("button");
+                buttonElement.className = `mark-done-btn bg-${isDone ? "red" : "green"}-600 text-white px-4 py-2 mt-2`;
+                buttonElement.innerText = isDone ? "Done" : "Not Done";
 
-              searchResults.appendChild(resultElement);
-            });
+                buttonElement.onclick = function () {
+                  toggleDone(questionId, buttonElement);
+                };
+
+                resultElement.appendChild(questionElement);
+                resultElement.appendChild(linkElement);
+                resultElement.appendChild(buttonElement);
+
+                searchResults.appendChild(resultElement);
+              });
+            }
           })
           .catch((error) => console.error("Error:", error));
-      });
+      }
 
       // Toggle between marking/unmarking a question as done and change button text + color
       function toggleDone(questionId, buttonElement) {
@@ -228,12 +290,12 @@
 
               if (doneQuestions.includes(questionId)) {
                 doneQuestions = doneQuestions.filter((id) => id !== questionId); // Unmark
-                buttonElement.innerHTML = "Mark as Done";
+                buttonElement.innerHTML = "Not Done";
                 buttonElement.classList.remove("bg-red-600");
                 buttonElement.classList.add("bg-green-600");
               } else {
                 doneQuestions.push(questionId); // Mark as done
-                buttonElement.innerHTML = "Unmark as Done";
+                buttonElement.innerHTML = "Done";
                 buttonElement.classList.remove("bg-green-600");
                 buttonElement.classList.add("bg-red-600");
               }
