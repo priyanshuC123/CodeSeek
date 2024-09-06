@@ -1,32 +1,251 @@
-
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Search Page</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeSEEK Search Page</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Correct Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-firestore-compat.js"></script>
   </head>
-  <body class="bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90% ...">
-    <div class="container mx-auto px-4 py-12">
-      <div class="max-w-3xl mx-auto">
-        <h1 class="text-6xl font-bold text-center drop-shadow-md text-blue-800 py-2"><strong>CodeSEEK</strong></h1>
-        <form method="POST" class="mb-4 flex items-center justify-center py-4">
-          {{ form.hidden_tag() }}
-          <div class="mr-2">
-            <label for="{{ form.search.id }}">{{ form.search.label }}</label>
+  <body class="bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 min-h-screen flex items-center justify-center">
+    <div class="container px-4 py-12">
+      <div class="max-w-lg mx-auto text-center">
+        <h1 class="text-6xl font-bold text-blue-800 drop-shadow-md mb-8">
+          <strong>CodeSEEK</strong>
+        </h1>
+
+        <!-- Sign Up Form -->
+        <div id="signup-form" class="p-8 bg-white shadow-lg rounded-lg mb-8">
+          <h2 class="text-2xl font-bold mb-6">Sign Up</h2>
+          <div class="mb-4">
+            <input id="email" type="email" placeholder="Email" class="w-full border border-gray-300 rounded px-4 py-2" required />
           </div>
-          {{ form.search(class="border border-gray-300 rounded px-4 py-2") }}
-          <button type="submit" class="bg-blue-800 text-white rounded px-4 py-2 ml-2">Search</button>
-        </form>
-        <div>
-          {% for result in results %}
-          <div class="bg-gray-200 rounded-lg shadow-lg p-6 mb-4">
-            <p class="text-lg font-semibold">{{ result['Question Link'].split('/')[-1].replace('-', ' ').capitalize() }}</p>
-            <a target="_blank" href="{{ result['Question Link'] }}" class="text-blue-500 mt-2 block">{{ result['Question Link'] }}</a>
+          <div class="mb-4">
+            <input id="password" type="password" placeholder="Password" class="w-full border border-gray-300 rounded px-4 py-2" required />
           </div>
-          {% endfor %}
+          <button id="signup-btn" class="w-full bg-blue-800 text-white rounded px-4 py-2">
+            Sign Up
+          </button>
+          <p class="mt-4 text-sm">
+            Already have an account?
+            <button id="toggle-login" class="text-blue-500 underline">Login</button>
+          </p>
         </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="hidden p-8 bg-white shadow-lg rounded-lg mb-8">
+          <h2 class="text-2xl font-bold mb-6">Login</h2>
+          <div class="mb-4">
+            <input id="login-email" type="email" placeholder="Email" class="w-full border border-gray-300 rounded px-4 py-2" required />
+          </div>
+          <div class="mb-4">
+            <input id="login-password" type="password" placeholder="Password" class="w-full border border-gray-300 rounded px-4 py-2" required />
+          </div>
+          <button id="login-btn" class="w-full bg-blue-800 text-white rounded px-4 py-2">
+            Login
+          </button>
+          <p class="mt-4 text-sm">
+            Don't have an account?
+            <button id="toggle-signup" class="text-blue-500 underline">Sign Up</button>
+          </p>
+        </div>
+
+        <!-- Search Form -->
+        <div id="search-section" class="hidden mt-12 flex justify-between items-center">
+          <form id="search-form" class="flex items-center w-full max-w-2xl mx-auto">
+            <input id="search-input" type="text" placeholder="Enter your search term" class="flex-grow border border-gray-300 rounded px-4 py-2 mr-2" required />
+            <button type="submit" class="bg-blue-800 text-white rounded px-4 py-2 ml-2">Search</button>
+          </form>
+          <button id="logout-btn" class="bg-red-600 text-white rounded px-4 py-2 ml-4 hidden">Logout</button>
+        </div>
+
+        <div id="tag-container" class="mb-4 pt-10 flex flex-wrap"></div>
+        <!-- For displaying tags -->
+        <div id="search-results" class="mt-8"></div>
       </div>
     </div>
+
+    <script>
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyCL-ps3hee2GvhIPK_Ob0Un02zFUipC40k",
+        authDomain: "codeseek-38680.firebaseapp.com",
+        projectId: "codeseek-38680",
+        storageBucket: "codeseek-38680.appspot.com",
+        messagingSenderId: "769198144736",
+        appId: "1:769198144736:web:4e785fbe83a41f2977e485",
+      };
+
+      // Initialize Firebase with compat versions
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore(); // Initialize Firestore
+
+      // Toggle between signup and login forms
+      document.getElementById("toggle-login").addEventListener("click", function () {
+        document.getElementById("signup-form").classList.add("hidden");
+        document.getElementById("login-form").classList.remove("hidden");
+      });
+
+      document.getElementById("toggle-signup").addEventListener("click", function () {
+        document.getElementById("login-form").classList.add("hidden");
+        document.getElementById("signup-form").classList.remove("hidden");
+      });
+
+      // Sign Up
+      document.getElementById("signup-btn").addEventListener("click", function () {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        auth
+          .createUserWithEmailAndPassword(email, password)
+          .then(() => {
+            alert("User signed up successfully");
+            toggleLoginState(true);
+          })
+          .catch((error) => {
+            console.error(error);
+            alert("Sign-up failed");
+          });
+      });
+
+      // Login
+      document.getElementById("login-btn").addEventListener("click", function () {
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+
+        auth
+          .signInWithEmailAndPassword(email, password)
+          .then(() => {
+            alert("User logged in successfully");
+            toggleLoginState(true);
+          })
+          .catch((error) => {
+            console.error(error);
+            alert("Login failed");
+          });
+      });
+
+      // Logout
+      document.getElementById("logout-btn").addEventListener("click", function () {
+        auth
+          .signOut()
+          .then(() => {
+            alert("User logged out successfully");
+            toggleLoginState(false);
+          })
+          .catch((error) => {
+            console.error(error);
+            alert("Logout failed");
+          });
+      });
+
+      // Toggle login state
+      function toggleLoginState(isLoggedIn) {
+        document.getElementById("login-form").classList.add("hidden");
+        document.getElementById("signup-form").classList.add("hidden");
+        document.getElementById("logout-btn").classList.toggle("hidden", !isLoggedIn);
+        document.getElementById("search-section").classList.toggle("hidden", !isLoggedIn);
+      }
+
+      let doneQuestions = []; // Initialize doneQuestions array
+      let tags = []; // Initialize tags array
+
+      // Fetch user data and check if logged in
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          const userRef = db.collection("users").doc(user.uid);
+
+          userRef
+            .get()
+            .then((doc) => {
+              if (doc.exists) {
+                doneQuestions = doc.data().doneQuestions || [];
+                console.log("Fetched doneQuestions from Firestore:", doneQuestions);
+                toggleLoginState(true); // Show the search form
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching user data:", error);
+            });
+        } else {
+          toggleLoginState(false);
+          document.getElementById("signup-form").classList.remove("hidden");
+        }
+      });
+
+      // AJAX-based Search Functionality
+      document.getElementById("search-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        const searchTerm = document.getElementById("search-input").value.trim();
+
+        if (!searchTerm) return;
+
+        fetch(`/search/${searchTerm}`)
+          .then((response) => response.json())
+          .then((data) => {
+            let searchResults = document.getElementById("search-results");
+            searchResults.innerHTML = ""; // Clear previous results
+
+            data.forEach((result) => {
+              const questionId = result["Question Link"].split("/").pop();
+              const isDone = doneQuestions.includes(questionId);
+
+              const resultElement = document.createElement("div");
+              resultElement.className = "bg-gray-200 rounded-lg shadow-lg p-6 mb-4";
+
+              resultElement.innerHTML = `
+                <p class="text-lg font-semibold">${questionId.replace("-", " ").toUpperCase()}</p>
+                <a target="_blank" href="${result["Question Link"]}" class="text-blue-500 mt-2 block">${result["Question Link"]}</a>
+                <button class="mark-done-btn ${questionId} bg-${isDone ? "red" : "green"}-600 text-white px-4 py-2 mt-2">
+                  ${isDone ? "Done" : "Not Done"}
+                </button>
+              `;
+
+              const buttonElement = resultElement.querySelector(`.${questionId}`);
+              buttonElement.onclick = () => toggleDone(questionId, buttonElement);
+
+              searchResults.appendChild(resultElement);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      });
+
+      // Toggle between marking/unmarking a question as done and change button text + color
+      function toggleDone(questionId, buttonElement) {
+        const user = auth.currentUser;
+
+        if (user) {
+          const userRef = db.collection("users").doc(user.uid);
+
+          userRef
+            .get()
+            .then((doc) => {
+              let doneQuestions = doc.exists && doc.data().doneQuestions ? doc.data().doneQuestions : [];
+
+              if (doneQuestions.includes(questionId)) {
+                doneQuestions = doneQuestions.filter((id) => id !== questionId); // Unmark
+                buttonElement.innerHTML = "Mark as Done";
+                buttonElement.classList.remove("bg-red-600");
+                buttonElement.classList.add("bg-green-600");
+              } else {
+                doneQuestions.push(questionId); // Mark as done
+                buttonElement.innerHTML = "Unmark as Done";
+                buttonElement.classList.remove("bg-green-600");
+                buttonElement.classList.add("bg-red-600");
+              }
+
+              // Update Firestore with the modified doneQuestions
+              userRef.set({ doneQuestions }, { merge: true });
+            })
+            .catch((error) => {
+              console.error("Error updating doneQuestions:", error);
+            });
+        }
+      }
+    </script>
   </body>
 </html>

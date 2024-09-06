@@ -138,10 +138,12 @@ class SearchForm(FlaskForm):
     submit = SubmitField('Search')
 
 
-@app.route("/<query>")
+@app.route("/search/<query>")
 def return_links(query):
     q_terms = [term.lower() for term in query.strip().split()]
-    return jsonify(calc_docs_sorted_order(q_terms)[:20:])
+    results = calc_docs_sorted_order(q_terms)[:20]
+    return jsonify(results)
+
 
 
 @app.route("/", methods=['GET', 'POST'])
