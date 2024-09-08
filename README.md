@@ -8,8 +8,8 @@
 ->Improved the performance of search engine by handling edge cases like no case sensitive, stemming and lemmatization.
 
 
-## Demo
-![Search Page - 17 June 2023](https://github.com/priyanshuC123/CodeSeek/assets/110935730/5a7c8093-4065-4cba-91c0-400bf639b288)
+## ScreenShot
+![Screenshot 2024-09-08 163630](https://github.com/user-attachments/assets/443c6756-8a20-4591-953d-aa9513c8602a)
 
 
 ## Authors
